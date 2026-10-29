@@ -1,5 +1,8 @@
 package com.moviebox.app.ui
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+
 import androidx.compose.foundation.verticalScroll
 
 import android.content.Context
@@ -84,9 +87,8 @@ fun TitleActionsSheet(
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                     .background(Color(0xFF2B2B2B))
                     .clickable(enabled = true, onClick = {})
-                    .navigationBarsPadding()
                     .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = navBarHeight() + 16.dp),
             ) {
                 Row(
                     Modifier.padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp),
@@ -163,4 +165,16 @@ private fun ActionRow(icon: ImageVector, label: String, selected: Boolean = fals
             }
         }
     }
+}
+
+/** Tinggi tombol navigasi HP (inset di dalam dialog sering terbaca 0, jadi dihitung dari sistem). */
+@Composable
+private fun navBarHeight(): androidx.compose.ui.unit.Dp {
+    val inset = androidx.compose.foundation.layout.WindowInsets.navigationBars
+        .asPaddingValues().calculateBottomPadding()
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    val id = res.getIdentifier("navigation_bar_height", "dimen", "android")
+    val px = if (id > 0) res.getDimensionPixelSize(id) else 0
+    val fromRes = (px / res.displayMetrics.density).dp
+    return maxOf(inset, fromRes, 24.dp)
 }

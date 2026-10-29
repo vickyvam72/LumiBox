@@ -14,6 +14,7 @@ Semua perubahan penting Lumi Box. Versi terbaru di paling atas.
 ### 🔧 Perbaikan
 - Menu ⋮ tidak lagi terpotong tombol navigasi HP; label Hapus diringkas.
 - Membuka judul lain saat pemutar di PiP langsung mengganti videonya.
+- **2.1.1:** opsi Hapus di menu ⋮ tidak tertutup tombol navigasi; subtitle lebih kecil dan menyesuaikan ukuran jendela PiP.
 
 ---
 

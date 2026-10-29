@@ -1521,18 +1521,28 @@ class PlayerActivity : ComponentActivity() {
             }
         }
         val current = text ?: return
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        // Ukuran subtitle mengikuti tinggi layar pemutar: lebih kecil saat menonton biasa,
+        // dan jauh lebih kecil di jendela PiP supaya tidak menutupi video.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            val h = maxHeight.value
+            val size = if (inPip) (h * 0.075f).coerceIn(7f, 12f) else (h * 0.042f).coerceIn(13f, 17f)
             Text(
                 current,
                 modifier = Modifier
-                    .padding(bottom = if (raised) 120.dp else 28.dp, start = 48.dp, end = 48.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(
+                        bottom = if (inPip) 4.dp else if (raised) 120.dp else 24.dp,
+                        start = if (inPip) 6.dp else 64.dp,
+                        end = if (inPip) 6.dp else 64.dp,
+                    )
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = if (inPip) 4.dp else 8.dp, vertical = if (inPip) 1.dp else 3.dp),
                 color = Color.White,
-                fontSize = 20.sp,
-                lineHeight = 26.sp,
+                fontSize = size.sp,
+                lineHeight = (size * 1.25f).sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium,
+                maxLines = if (inPip) 2 else 4,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
         }
     }
