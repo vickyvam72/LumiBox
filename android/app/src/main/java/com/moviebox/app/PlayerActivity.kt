@@ -144,6 +144,8 @@ class PlayerActivity : ComponentActivity() {
     private var buffering by mutableStateOf(false)
     private var tracksVersion by mutableIntStateOf(0)
     private var speed by mutableFloatStateOf(1f)
+    private var boosting by mutableStateOf(false)
+    private var inPip by mutableStateOf(false)
     private var cues by mutableStateOf<List<com.moviebox.app.data.Cue>>(emptyList())
     private var subtitleOffsetMs by mutableLongStateOf(0L)
 
@@ -174,6 +176,10 @@ class PlayerActivity : ComponentActivity() {
             .build()
         player = ExoPlayer.Builder(this).setLoadControl(loadControl).build()
         player.addListener(listener)
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, pipToggle, android.content.IntentFilter(ACTION_PIP_TOGGLE),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         com.moviebox.app.data.Together.player = togetherHook
 
         setContent {
@@ -532,6 +538,7 @@ class PlayerActivity : ComponentActivity() {
 
         override fun onIsPlayingChanged(playing: Boolean) {
             isPlaying = playing
+            updatePip()
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -710,6 +717,78 @@ class PlayerActivity : ComponentActivity() {
 
     // ================================================================== lifecycle
 
+    // ================================================================== Picture-in-Picture
+
+    private val pipToggle = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            if (!::player.isInitialized) return
+            if (player.isPlaying) player.pause() else player.play()
+        }
+    }
+
+    private fun pipParams(): android.app.PictureInPictureParams {
+        val playing = ::player.isInitialized && player.isPlaying
+        val pi = android.app.PendingIntent.getBroadcast(
+            this, 0, Intent(ACTION_PIP_TOGGLE).setPackage(packageName),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val action = android.app.RemoteAction(
+            android.graphics.drawable.Icon.createWithResource(
+                this, if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+            ),
+            if (playing) "Jeda" else "Putar",
+            if (playing) "Jeda" else "Putar",
+            pi,
+        )
+        val size = if (::player.isInitialized) player.videoSize else null
+        val ratio = if (size != null && size.width > 0 && size.height > 0) {
+            val r = size.width.toFloat() / size.height
+            if (r in 0.42f..2.38f) android.util.Rational(size.width, size.height) else android.util.Rational(16, 9)
+        } else android.util.Rational(16, 9)
+        val b = android.app.PictureInPictureParams.Builder().setAspectRatio(ratio).setActions(listOf(action))
+        if (android.os.Build.VERSION.SDK_INT >= 31) b.setAutoEnterEnabled(playing).setSeamlessResizeEnabled(true)
+        return b.build()
+    }
+
+    private fun pipSupported() = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    private fun enterPip() {
+        if (!pipSupported()) {
+            Toast.makeText(this, "HP ini tidak mendukung mode PiP", Toast.LENGTH_SHORT).show()
+            return
+        }
+        runCatching { enterPictureInPictureMode(pipParams()) }
+    }
+
+    private fun updatePip() {
+        if (pipSupported()) runCatching { setPictureInPictureParams(pipParams()) }
+    }
+
+    /** Pemutar sudah terbuka (mis. di PiP) lalu judul lain dibuka → muat ulang dengan judul baru. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getStringExtra(EXTRA_ID) == this.intent.getStringExtra(EXTRA_ID) &&
+            intent.getIntExtra(EXTRA_SEASON, 0) == this.intent.getIntExtra(EXTRA_SEASON, 0) &&
+            intent.getIntExtra(EXTRA_EPISODE, 0) == this.intent.getIntExtra(EXTRA_EPISODE, 0) &&
+            intent.getStringExtra(EXTRA_LOCAL) == this.intent.getStringExtra(EXTRA_LOCAL)
+        ) return
+        if (::player.isInitialized) saveProgress()
+        setIntent(intent)
+        recreate()
+    }
+
+    /** Tombol Home saat video berjalan → otomatis masuk PiP (Android 12+ lewat setAutoEnterEnabled). */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (android.os.Build.VERSION.SDK_INT < 31 && ::player.isInitialized && player.isPlaying && !inPip) enterPip()
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+        if (!isInPictureInPictureMode) hideSystemBars()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) hideSystemBars()
@@ -726,6 +805,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onDestroy() {
         if (com.moviebox.app.data.Together.player === togetherHook) com.moviebox.app.data.Together.player = null
         loadJob?.cancel()
+        runCatching { unregisterReceiver(pipToggle) }
         if (::player.isInitialized) player.release()
         super.onDestroy()
     }
@@ -752,8 +832,8 @@ class PlayerActivity : ComponentActivity() {
                 loadEpisode(c.season, c.episode, resume = false)
             } else {
                 saveProgress()
+                // singleTask: membuka judul lain memakai pemutar yang sama (lewat onNewIntent)
                 com.moviebox.app.data.Together.opener?.invoke(c)
-                finish()
             }
         }
     }
@@ -853,6 +933,20 @@ class PlayerActivity : ComponentActivity() {
                     .fillMaxSize()
                     .pointerInput(locked) {
                         detectTapGestures(
+                            // Tahan kiri/kanan layar = percepat 2x sampai dilepas.
+                            onPress = {
+                                tryAwaitRelease()
+                                if (boosting) {
+                                    boosting = false
+                                    player.setPlaybackSpeed(speed)
+                                }
+                            },
+                            onLongPress = {
+                                if (!locked && player.isPlaying) {
+                                    boosting = true
+                                    player.setPlaybackSpeed(2f)
+                                }
+                            },
                             onTap = {
                                 controlsVisible = !controlsVisible
                                 touchTick++
@@ -873,7 +967,7 @@ class PlayerActivity : ComponentActivity() {
                         locked = false
                         touchTick++
                     })
-                } else if (controlsVisible && loadingMessage == null && errorMessage == null) {
+                } else if (controlsVisible && !inPip && loadingMessage == null && errorMessage == null) {
                     Controls(
                         position = position,
                         duration = duration,
@@ -902,11 +996,26 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
 
-            if (buffering && loadingMessage == null && errorMessage == null) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center).size(56.dp), color = Accent)
+            if (boosting && !inPip) {
+                Text(
+                    "2x  ▸▸",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 28.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                )
             }
-            loadingMessage?.let { LoadingOverlay(it) }
-            errorMessage?.let { ErrorOverlay(it) }
+            if (buffering && loadingMessage == null && errorMessage == null) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center).size(if (inPip) 28.dp else 56.dp), color = Accent)
+            }
+            if (!inPip) {
+                loadingMessage?.let { LoadingOverlay(it) }
+                errorMessage?.let { ErrorOverlay(it) }
+            }
 
             when (panel) {
                 Panel.SPEED -> SpeedPanel(onClose = { panel = Panel.NONE })
@@ -957,6 +1066,9 @@ class PlayerActivity : ComponentActivity() {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                IconButton(onClick = { enterPip() }) {
+                    Icon(PlayerIcons.Pip, contentDescription = "Mode PiP", tint = Color.White, modifier = Modifier.size(26.dp))
+                }
                 com.moviebox.app.ui.TogetherButton(28.dp)
                 IconButton(onClick = onLock) {
                     Icon(PlayerIcons.LockOpen, contentDescription = "Kunci layar", tint = Color.White, modifier = Modifier.size(28.dp))
@@ -1498,6 +1610,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val ACTION_PIP_TOGGLE = "com.moviebox.app.PIP_TOGGLE"
         private const val EXTRA_ID = "id"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_POSTER = "poster"

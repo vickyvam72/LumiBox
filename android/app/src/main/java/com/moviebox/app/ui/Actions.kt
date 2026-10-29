@@ -1,5 +1,7 @@
 package com.moviebox.app.ui
 
+import androidx.compose.foundation.verticalScroll
+
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -64,7 +66,11 @@ fun TitleActionsSheet(
 ) {
     val taste = Library.taste(title)
     val genres = (Tmdb.cached(title)?.genres ?: emptyList()).ifEmpty { title.genres }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // decorFitsSystemWindows = false → navigationBarsPadding() bekerja, menu tidak tertutup tombol navigasi HP.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -79,7 +85,8 @@ fun TitleActionsSheet(
                     .background(Color(0xFF2B2B2B))
                     .clickable(enabled = true, onClick = {})
                     .navigationBarsPadding()
-                    .padding(bottom = 12.dp),
+                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                    .padding(bottom = 16.dp),
             ) {
                 Row(
                     Modifier.padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp),
@@ -122,7 +129,7 @@ fun TitleActionsSheet(
                     onDismiss()
                 }
                 if (onRemove != null) {
-                    ActionRow(PlayerIcons.Delete, "Hapus (Lanjutkan Menonton & History)") {
+                    ActionRow(PlayerIcons.Delete, "Hapus", subtitle = "Dari Lanjutkan Menonton & History") {
                         onDismiss()
                         onRemove()
                     }
@@ -133,7 +140,7 @@ fun TitleActionsSheet(
 }
 
 @Composable
-private fun ActionRow(icon: ImageVector, label: String, selected: Boolean = false, onClick: () -> Unit) {
+private fun ActionRow(icon: ImageVector, label: String, selected: Boolean = false, subtitle: String? = null, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -143,10 +150,17 @@ private fun ActionRow(icon: ImageVector, label: String, selected: Boolean = fals
     ) {
         Icon(icon, contentDescription = null, tint = if (selected) Accent else Color.White, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(26.dp))
-        Text(
-            label + if (selected) "  ✓" else "",
-            color = if (selected) Accent else Color.White.copy(alpha = 0.92f),
-            fontSize = 18.sp,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                label + if (selected) "  ✓" else "",
+                color = if (selected) Accent else Color.White.copy(alpha = 0.92f),
+                fontSize = 18.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (subtitle != null) {
+                Text(subtitle, color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }

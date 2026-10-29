@@ -30,7 +30,7 @@
 | 🇮🇩 **Lokal & global** | Film Lokal, Serial Lokal, Film Global, Serial Global. Judul lokal pakai bahasa Indonesia, judul luar negeri pakai bahasa Inggris. |
 | ✅ **Hanya yang bisa ditonton** | Setiap judul dicek dulu ke MovieBox. Tombol **Putar** hanya muncul kalau videonya benar-benar ada. |
 | ❤️ **Rekomendasi untukmu** | Tekan **Saya Suka** / **Bukan untuk Saya**, rekomendasi menyesuaikan genre, asal (lokal/global), dan jenis tontonanmu. |
-| 🎬 **Pemutar ala bioskop** | Subtitle Indonesia otomatis, sinkron subtitle per 0,1 detik, kualitas otomatis, kecerahan, kunci layar, episode berikutnya. |
+| 🎬 **Pemutar ala bioskop** | Mode **PiP**, tahan layar untuk **2x**, subtitle Indonesia otomatis, sinkron subtitle per 0,1 detik, kualitas otomatis, kecerahan, kunci layar, episode berikutnya. |
 | 📥 **Download untuk offline** | Unduh film atau episode **beserta subtitlenya**, lalu tonton tanpa internet. |
 | 👥 **Nonton Bareng** | Tonton bersama teman di HP masing-masing, **pas di detik yang sama**, cukup dengan kode room. |
 | 🧹 **Saringan konten** | Drama pendek (DramaBox dkk.) dan film India/Bollywood disembunyikan secara bawaan, bisa dinyalakan di Setting. |
@@ -71,6 +71,8 @@
 ### 🎬 Menonton
 - Ketuk judul → **halaman info** dulu, putar lewat tombol **Putar**
 - Audio bahasa asli (bukan dubbing), subtitle **Indonesia → bahasa asli**
+- **Mode PiP**: video lanjut di jendela kecil mengambang (tombol PiP, atau tekan Home saat video berjalan)
+- **Tahan kiri/kanan layar = 2x** sampai dilepas
 - Kontrol: ±10 detik, kecepatan, kecerahan, kunci layar, pilih episode, **Eps. Berikutnya**, Audio & Subtitle, sinkron subtitle 0,1 detik
 - Kualitas otomatis dengan cadangan; kalau semua link ditolak, Lumi Box meminta ulang ke semua jalur MovieBox
 - Pengaman durasi: video yang jelas bukan judul ini tidak diputar diam-diam
@@ -89,7 +91,7 @@
 ## ⬇️ Unduh & Pasang
 
 1. Buka halaman **[Releases](https://github.com/vickyvam72/LumiBox/releases/latest)**.
-2. Di bagian **Assets**, unduh `LumiBox-v2.0.apk`.
+2. Di bagian **Assets**, unduh `LumiBox-v2.1.apk`.
 3. Buka file yang sudah diunduh. Kalau Android meminta, izinkan **"Instal aplikasi tidak dikenal"** untuk browser atau pengelola file yang kamu pakai.
 4. Tekan **Instal**. Selesai! 🎉
 

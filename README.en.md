@@ -30,7 +30,7 @@
 | 🇮🇩 **Local & global** | Local Movies, Local Series, Global Movies, Global Series. Indonesian titles stay in Indonesian; foreign titles use English. |
 | ✅ **Only what you can watch** | Every title is checked against MovieBox first. The **Play** button only appears when the video really exists. |
 | ❤️ **Recommended for you** | Tap **I like it** / **Not for me**; recommendations follow your genres, origin (local/global), and movie vs. series taste. |
-| 🎬 **Cinema-style player** | Automatic Indonesian subtitles, 0.1 s subtitle sync, automatic quality, brightness, screen lock, next episode. |
+| 🎬 **Cinema-style player** | **PiP** mode, hold for **2x**, automatic Indonesian subtitles, 0.1 s subtitle sync, automatic quality, brightness, screen lock, next episode. |
 | 📥 **Offline downloads** | Download a movie or episode **with its subtitles** and watch without internet. |
 | 👥 **Watch Together** | Watch with friends on your own phones, **at the same second**, with just a room code. |
 | 🧹 **Content filters** | Short dramas (DramaBox etc.) and Indian/Bollywood titles are hidden by default; turn them on in Settings. |
@@ -71,6 +71,8 @@
 ### 🎬 Watching
 - Tapping a title opens its **info page** first; play with **Play**
 - Original-language audio (no dubs), subtitles **Indonesian → original language**
+- **PiP mode**: keep watching in a floating window (PiP button, or press Home while playing)
+- **Hold left/right side = 2x** until you let go
 - Controls: ±10 s, speed, brightness, screen lock, episode picker, **Next episode**, Audio & Subtitles, 0.1 s subtitle sync
 - Automatic quality with fallbacks; if every link is rejected, Lumi Box asks all MovieBox routes again
 - Duration guard: a video that clearly isn't this title won't play silently
@@ -89,7 +91,7 @@
 ## ⬇️ Download & Install
 
 1. Open the **[Releases](https://github.com/vickyvam72/LumiBox/releases/latest)** page.
-2. Under **Assets**, download `LumiBox-v2.0.apk`.
+2. Under **Assets**, download `LumiBox-v2.1.apk`.
 3. Open the downloaded file. If Android asks, allow **"Install unknown apps"** for your browser or file manager.
 4. Tap **Install**. Done! 🎉
 

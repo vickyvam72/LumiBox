@@ -4,6 +4,19 @@ Semua perubahan penting Lumi Box. Versi terbaru di paling atas.
 
 ---
 
+## 🪟 v2.1
+
+### ✨ Baru
+- **Mode PiP** (Picture-in-Picture): tombol PiP di pemutar, otomatis masuk PiP saat menekan Home ketika video berjalan, tombol putar/jeda di jendela kecil.
+- **Tahan untuk 2x**: tahan sisi kiri/kanan layar untuk mempercepat 2x sampai dilepas.
+- **Menu ⋮ di carousel atas** (tanpa opsi Hapus karena belum ditonton); "Bukan untuk Saya" langsung mengganti isi carousel.
+
+### 🔧 Perbaikan
+- Menu ⋮ tidak lagi terpotong tombol navigasi HP; label Hapus diringkas.
+- Membuka judul lain saat pemutar di PiP langsung mengganti videonya.
+
+---
+
 ## 🚀 v2.0 — Rilis besar pertama di repo baru
 
 ### ✨ Baru

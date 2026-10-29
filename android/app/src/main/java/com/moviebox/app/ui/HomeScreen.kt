@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -719,6 +721,18 @@ private fun HeroCarousel(items: List<Title>, onPlay: (Title) -> Unit, onDetails:
 private fun HeroCard(item: Title, onPlay: () -> Unit, onDetails: () -> Unit) {
     val inList = Library.isInList(item.key)
     val info = mergeInfo(item, rememberTmdb(item), null, null)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var menu by remember { mutableStateOf(false) }
+    if (menu) {
+        // Belum ditonton → tanpa opsi Hapus. "Bukan untuk Saya" langsung mengganti isi carousel.
+        TitleActionsSheet(
+            title = item,
+            onDismiss = { menu = false },
+            onInfo = onDetails,
+            onDownload = { if (item.isSeries) onDetails() else startDownload(context, scope, item, 0, 0) },
+        )
+    }
     Box(
         Modifier
             .fillMaxWidth()
@@ -739,6 +753,19 @@ private fun HeroCard(item: Title, onPlay: () -> Unit, onDetails: () -> Unit) {
                 .fillMaxSize()
                 .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.92f))),
         )
+        // Tombol ⋮ di pojok kanan atas
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(10.dp)
+                .size(40.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable { menu = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Lainnya", tint = Color.White)
+        }
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
