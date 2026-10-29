@@ -750,6 +750,17 @@ class PlayerActivity : ComponentActivity() {
         return b.build()
     }
 
+    private fun closeEverything() {
+        if (::player.isInitialized) {
+            saveProgress()
+            player.pause()
+        }
+        com.moviebox.app.data.Together.leave()
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        runCatching { am.appTasks.forEach { it.finishAndRemoveTask() } }
+        finishAndRemoveTask()
+    }
+
     private fun pipSupported() = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
     private fun enterPip() {
@@ -786,7 +797,15 @@ class PlayerActivity : ComponentActivity() {
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         inPip = isInPictureInPictureMode
-        if (!isInPictureInPictureMode) hideSystemBars()
+        if (!isInPictureInPictureMode) {
+            // Keluar PiP saat pemutar sudah tidak tampil (state CREATED) = jendela PiP ditutup (bukan diperbesar)
+            // → tutup pemutar dan seluruh aplikasi.
+            if (lifecycle.currentState == androidx.lifecycle.Lifecycle.State.CREATED) {
+                closeEverything()
+                return
+            }
+            hideSystemBars()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
