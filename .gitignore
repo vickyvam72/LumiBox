@@ -1,0 +1,14 @@
+target/
+**/target/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/jniLibs/*/
+android/local.properties
+.idea/
+*.iml
+dist/
+
+# kunci tanda tangan APK — simpan di GitHub Secrets, jangan di repo
+*.jks
+*.keystore

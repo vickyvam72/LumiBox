@@ -1,0 +1,144 @@
+name: Build Lumi Box
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Rust (target Android)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bridge
+
+      - name: Install cargo-ndk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Build library Rust (.so) untuk Android
+        working-directory: bridge
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          echo "Pakai NDK: $ANDROID_NDK_HOME"
+          cargo ndk -t arm64-v8a -t armeabi-v7a --platform 26 \
+            -o ../android/app/src/main/jniLibs build --release
+          ls -R ../android/app/src/main/jniLibs
+
+      - name: Ambil kunci tanda tangan dari Secrets
+        env:
+          KS_B64: ${{ secrets.LUMIBOX_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.LUMIBOX_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
+            # Tanpa kunci resmi: tetap build dengan kunci sementara supaya error kode tetap ketahuan,
+            # tapi APK TIDAK dirilis (tanda tangannya beda, tidak bisa menimpa versi lama).
+            echo "::warning::Secrets LUMIBOX_KEYSTORE_BASE64 / LUMIBOX_KEYSTORE_PASSWORD belum diisi (Settings > Secrets and variables > Actions). APK tidak akan dirilis."
+            keytool -genkeypair -keystore "$RUNNER_TEMP/lumibox.jks" -alias moviebox -keyalg RSA -keysize 2048 \
+              -validity 30 -storepass tempPass123 -keypass tempPass123 -dname "CN=Temp" >/dev/null 2>&1
+            echo "LUMIBOX_KEYSTORE_PATH=$RUNNER_TEMP/lumibox.jks" >> "$GITHUB_ENV"
+            echo "LUMIBOX_KEYSTORE_PASSWORD=tempPass123" >> "$GITHUB_ENV"
+            echo "HAS_KEY=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/lumibox.jks"
+          echo "LUMIBOX_KEYSTORE_PATH=$RUNNER_TEMP/lumibox.jks" >> "$GITHUB_ENV"
+          echo "LUMIBOX_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "HAS_KEY=true" >> "$GITHUB_ENV"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle assembleRelease --no-daemon 2>&1 | tee build.log
+
+      - name: Laporkan error build
+        if: failure()
+        working-directory: android
+        run: |
+          if [ -f build.log ]; then
+            grep -E "^e: |error:|What went wrong|Unresolved|Type mismatch" -A2 build.log | head -60 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+
+      - name: Baca versi
+        id: ver
+        run: |
+          TAG=$(tr -d ' \r\n' < release-notes/CURRENT)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/LumiBox-${{ steps.ver.outputs.tag }}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk dist/LumiBox.apk
+
+      - name: Simpan APK ke branch "apk"
+        if: github.event_name == 'push' && env.HAS_KEY == 'true'
+        run: |
+          mkdir -p apkbranch && cp dist/LumiBox.apk apkbranch/
+          cd apkbranch
+          git init -q
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout -q -b apk
+          git add LumiBox.apk
+          git commit -q -m "LumiBox.apk build ${{ github.run_number }} (${{ github.sha }})"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk
+
+      - name: Upload APK (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: LumiBox-APK
+          path: dist/LumiBox-*.apk
+
+      # Satu rilis per versi (release-notes/CURRENT, mis. v2.0). Push berikutnya memperbarui
+      # APK di rilis versi itu. Tag versi selalu menunjuk commit terbaru.
+      - name: Pindahkan tag versi ke commit ini
+        if: github.ref == 'refs/heads/main' && env.HAS_KEY == 'true'
+        run: |
+          git tag -f "${{ steps.ver.outputs.tag }}" "${{ github.sha }}"
+          git push -f origin "refs/tags/${{ steps.ver.outputs.tag }}"
+
+      - name: Terbitkan rilis
+        if: github.ref == 'refs/heads/main' && env.HAS_KEY == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Lumi Box ${{ steps.ver.outputs.tag }}
+          body_path: release-notes/${{ steps.ver.outputs.tag }}.md
+          make_latest: "true"
+          files: dist/LumiBox-${{ steps.ver.outputs.tag }}.apk
+
+      - name: Kunci resmi belum diisi
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::error::Kode berhasil di-build, tapi APK tidak dirilis karena Secrets LUMIBOX_KEYSTORE_BASE64 / LUMIBOX_KEYSTORE_PASSWORD belum diisi."
+          exit 1
